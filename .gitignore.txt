@@ -1,0 +1,18 @@
+# Python virtual environment
+venv/
+
+# Data files (never push to GitHub)
+data/raw/
+data/processed/
+
+# Cache
+__pycache__/
+*.pyc
+
+# IDE / Editor files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
