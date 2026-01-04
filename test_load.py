@@ -1,111 +1,88 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation 
-from mpl_toolkits.mplot3d import Axes3D # Import für 3D
-from src.loader import load_csv_scandata 
+import pandas as pd # NEU: Für DataFrame-Handhabung der Features
+from src.loader import load_csv_scandata
+from src.viewer import show_frame_2d, animate_2d
+from src.feature_extractor import extract_features, compare_wet_dry_stats # NEU: Feature-Logik
 
-# Definieren Sie den Pfad zu Ihrer Datei
-FILE_PATH = 'd:/Lidar-projekt/data/raw/wet_20251207160801_20251207160821.csv'
-
-print(f"Starte das Laden der Datei: {FILE_PATH.split('/')[-1]}")
-
-# Laden der Daten
-frames = load_csv_scandata(FILE_PATH)
+FILE_WET = "d:/Lidar-projekt/data/raw/wet_20251207160801_20251207160821.csv"
+FILE_DRY = "d:/Lidar-projekt/data/raw/dry_20251207161846_20251207161906.csv"
 
 # =================================================================
-# 🚀 Animationsfunktion für 3D-Punktwolken
+# 1. Laden der Daten
 # =================================================================
+print(f"Starte das Laden der WET-Datei: {FILE_WET}")
+frames_wet = load_csv_scandata(FILE_WET)
+print(f"🥳 Wet Frames geladen: {len(frames_wet)}")
 
-def animate_scans_3d(frames):
-    """
-    Erstellt eine 3D-Animation aller geladenen Lidar-Frames. 
-    """
-    if not frames:
-        return
-        
-    num_frames = len(frames)
-    
-    # Sammle RSSI-Werte für die globale Farb-Skala (Spalte 3)
-    all_rssi = np.concatenate([frame[:, 3] for frame in frames])
-    RSSI_MIN = np.percentile(all_rssi[all_rssi > 0], 5) if all_rssi.size > 0 else 0
-    RSSI_MAX = np.percentile(all_rssi, 95) if all_rssi.size > 0 else 5000
-    if RSSI_MAX == 0: RSSI_MAX = 5000 
-    print(f"Farbskala (RSSI): {RSSI_MIN:.0f} bis {RSSI_MAX:.0f}")
-
-    # 1. Figur und 3D-Achsen einrichten
-    fig = plt.figure(figsize=(10, 10))
-    ax = fig.add_subplot(111, projection='3d') 
-    
-    # Setze Achsen-Grenzen
-    ax.set_xlim(-10, 10) 
-    ax.set_ylim(-10, 10)
-    ax.set_zlim(-5, 5) 
-    
-    ax.set_xlabel("X (Meter)")
-    ax.set_ylabel("Y (Meter)")
-    ax.set_zlabel("V-Winkel Index") 
-
-    # 2. Initialen Scatter-Plot erstellen
-    current_frame = frames[0]
-    
-    # Spalten: H-Winkel (0), V-Index (1), Distanz (2), RSSI (3)
-    theta = current_frame[:, 0]
-    vertical_index = current_frame[:, 1] 
-    r = current_frame[:, 2] / 1000.0 # Konvertierung zu Meter
-    rssi = current_frame[:, 3]
-    
-    # Kartesische 3D-Koordinaten:
-    x = r * np.cos(theta)
-    y = r * np.sin(theta)
-    z = vertical_index 
-    
-    scatter = ax.scatter(x, y, z, s=5, c=rssi, cmap='viridis', 
-                         vmin=RSSI_MIN, vmax=RSSI_MAX) 
-    
-    cbar = fig.colorbar(scatter, ax=ax, shrink=0.7)
-    cbar.set_label('RSSI / Intensität')
-    
-    # 3. Die Update-Funktion
-    def update(frame_index):
-        """Aktualisiert die Datenpunkte für den Frame frame_index."""
-        current_frame = frames[frame_index]
-        
-        theta = current_frame[:, 0]
-        vertical_index = current_frame[:, 1] 
-        r = current_frame[:, 2] / 1000.0 # Meter
-        rssi = current_frame[:, 3]
-        
-        x = r * np.cos(theta)
-        y = r * np.sin(theta)
-        z = vertical_index
-        
-        # Aktualisiere die Daten
-        scatter._offsets3d = (x, y, z) 
-        scatter.set_array(rssi)
-        
-        ax.set_title(f"3D Lidar Point Cloud | Frame {frame_index + 1}/{num_frames} ({len(x)} Punkte)")
-        
-        return scatter,
-
-    # 4. FuncAnimation erstellen und starten
-    ani = FuncAnimation(
-        fig, 
-        update, 
-        frames=num_frames, 
-        interval=50, 
-        blit=False, 
-        repeat=True 
-    )
-
-    print("Starte Matplotlib 3D Animation (Alle 16 Kanäle)...")
-    plt.show()
-
+print(f"\nStarte das Laden der DRY-Datei: {FILE_DRY}")
+frames_dry = load_csv_scandata(FILE_DRY)
+print(f"🥳 Dry Frames geladen: {len(frames_dry)}")
 
 # =================================================================
-# 🏁 Hauptausführung
+# 2. Feature-Extraktion
 # =================================================================
-if frames:
-    print(f"🥳 {len(frames)} Frames erfolgreich geladen.")
-    animate_scans_3d(frames)
+if frames_wet:
+    df_wet_features = extract_features(frames_wet, scan_type="WET")
+    print(f"\n✅ {len(df_wet_features)} WET-Frames in Features umgewandelt.")
+    print("\n--- Erste WET Feature-Reihen ---")
+    print(df_wet_features.head(3).to_markdown(numalign="left", stralign="left"))
 else:
-    print("Die Daten konnten nicht geladen werden oder es wurden keine gültigen Frames gefunden.")
+    df_wet_features = pd.DataFrame()
+
+if frames_dry:
+    df_dry_features = extract_features(frames_dry, scan_type="DRY")
+    print(f"\n✅ {len(df_dry_features)} DRY-Frames in Features umgewandelt.")
+else:
+    df_dry_features = pd.DataFrame()
+
+
+# =================================================================
+# 3. Quantifizierung (Vergleich)
+# =================================================================
+if not df_wet_features.empty and not df_dry_features.empty:
+    compare_wet_dry_stats(df_wet_features, df_dry_features)
+
+# =================================================================
+# 4. Erstellung des Trainingsdatensatzes (NEU)
+# =================================================================
+if not df_wet_features.empty and not df_dry_features.empty:
+    
+    # 1. Labels hinzufügen: DRY = 0 (Kein Rauschen/Objekt), WET = 1 (Rauschen/Objekt-Mischung)
+    # HINWEIS: Wir labeln hier den FRAME. Später (Issue 5) labeln wir den einzelnen PUNKT.
+    # Für den ersten ML-Test (Frame-Klassifizierung) ist das ausreichend.
+    df_wet_features['is_wet'] = 1
+    df_dry_features['is_wet'] = 0
+    
+    # 2. Kombinieren der Datensätze
+    df_training_data = pd.concat([df_wet_features, df_dry_features], ignore_index=True)
+    
+    # 3. Features bereinigen (NaNs aus channel-spezifischen Features entfernen, falls aufgetreten)
+    df_training_data = df_training_data.fillna(df_training_data.mean(numeric_only=True))
+
+    # 4. Export des finalen Datensatzes
+    OUTPUT_PATH = "d:/Lidar-projekt/data/processed/frame_features_dataset.csv"
+    df_training_data.to_csv(OUTPUT_PATH, index=False)
+    
+    print("\n=======================================================")
+    print(f"✅ Trainingsdatensatz erfolgreich exportiert:")
+    print(f"   Gesamtframes: {len(df_training_data)}")
+    print(f"   DRY (Label 0): {len(df_dry_features)} Frames")
+    print(f"   WET (Label 1): {len(df_wet_features)} Frames")
+    print(f"   Exportpfad: {OUTPUT_PATH}")
+    print("=======================================================\n")
+    
+    #
+
+
+# =================================================================
+# 4. Visualisierung (optional - Animation nur für einen Satz)
+# =================================================================
+# # Wenn Sie die Animation sehen möchten, die Zeilenkommentare entfernen:
+print("Zeige Wet Frame 0 ...")
+show_frame_2d(frames_wet[0], "Wet Frame 0 (2D Projektion)")
+
+print("Zeige Dry Frame 0 ...")
+show_frame_2d(frames_dry[0], "Dry Frame 0 (2D Projektion)")
+
+animate_2d(frames_wet, "Wet Animation")
+animate_2d(frames_dry, "Dry Animation")

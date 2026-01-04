@@ -23,7 +23,7 @@ try:
             found_channels.append(col)
             
     if not found_channels:
-        print(f"❌ KEINE Spalten mit dem Muster '{SEARCH_PATTERN}' gefunden.")
+        print(f" KEINE Spalten mit dem Muster '{SEARCH_PATTERN}' gefunden.")
         
     else:
         # Finde den Index der Distanz-Startspalte (wissen wir bereits)
@@ -31,7 +31,7 @@ try:
         dist_index = -1
         try:
             dist_index = clean_header.index(dist_start_col)
-            print(f"✅ Distanz-Startspalte ({dist_start_col}) gefunden bei Index {dist_index}.")
+            print(f"Distanz-Startspalte ({dist_start_col}) gefunden bei Index {dist_index}.")
         except ValueError:
             print("⚠️ Distanz-Startspalte (Channel 16) nicht gefunden.")
 
@@ -54,7 +54,7 @@ try:
             if col in clean_header:
                 index = clean_header.index(col)
                 
-                # Finde die Kanalnummer außerhalb des f-strings (Korrektur des Syntaxfehlers)
+                # Finde die Kanalnummer außerhalb des f-strings 
                 channel_match = re.search(r'aDataChannel(\d+)', col)
                 channel_number = channel_match.group(1) if channel_match else '??'
                 
@@ -64,9 +64,9 @@ try:
                 print(f" - Channel {channel_number}: {col} [Index: {index}]{label}")
             
         print("\n--- Ende der Spaltenanalyse ---")
-        print("\n➡️ Die RSSI-Startspalte muss EINER dieser 'aDataChannelXX[0].aData[0]'-Einträge sein und NACH der Distanz-Startspalte liegen.")
+        print("\n Die RSSI-Startspalte muss EINER dieser 'aDataChannelXX[0].aData[0]'-Einträge sein und NACH der Distanz-Startspalte liegen.")
 
 except FileNotFoundError:
-    print(f"❌ Fehler: Datei nicht gefunden unter '{FILE_PATH}'")
+    print(f" Fehler: Datei nicht gefunden unter '{FILE_PATH}'")
 except Exception as e:
     print(f"Ein unerwarteter Fehler beim Lesen der Daten: {e}")
